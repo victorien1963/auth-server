@@ -1,25 +1,25 @@
 const createError = require('http-errors')
 const express = require('express')
 const path = require('path')
-// const cookieParser = require('cookie-parser')
 const logger = require('morgan')
 const cors = require('cors')
 // passport.js
 const passport = require('passport')
 const LocalStrategy = require('passport-local').Strategy
-const session = require('express-session')
+const JwtStrategy = require('passport-jwt').Strategy
+const ExtractJwt = require('passport-jwt').ExtractJwt
+const jwt = require('jsonwebtoken')
 // mongoose
 const mongoose = require('mongoose')
 main().catch(err => console.log(err))
 async function main () {
   console.log('start connect')
-  await mongoose.connect('mongodb://127.0.0.1:27017/nautilus')
+  await mongoose.connect('mongodb://127.0.0.1:27017/luca')
   console.log('connect sucess')
 }
 const User = require('./models/user.js')
 
 const indexRouter = require('./routes/index')
-// const usersRouter = require('./routes/users')
 
 const app = express()
 
@@ -35,22 +35,36 @@ app.use(express.urlencoded({ extended: false }))
 app.use(express.static(path.join(__dirname, 'public')))
 // trust proxy to cookie secure
 app.set('trust proxy', 1)
-app.use(session({
-  secret: 'innovation lab',
-  resave: false,
-  saveUninitialized: true,
-  cookie: { secure: true }
-}))
 app.use(passport.initialize())
-app.use(passport.session())
+app.use(async (req, res, next) => {
+  const token = req.header('Authorization')
+  if (token) {
+    const decoded = jwt.verify(token.replace('Bearer ', ''), 'innovation lab')
+    const user = await User.findById(decoded).select('name email role')
+    if (user) req.user = user
+  }
+  next()
+})
+
+const signin = (req, res) => {
+  console.log(`${req.user.name} has logged in`)
+  const token = jwt.sign({ _id: req.user._id }, 'innovation lab')
+  res.json(token)
+}
 
 app.use('/', indexRouter)
-// app.use('/users', usersRouter)
 app.post('/login',
-  passport.authenticate('local'),
-  (req, res) => res.send(req.user))
+  passport.authenticate('local', { session: false }),
+  signin)
+app.get('/me', async (req, res) => {
+  if (req.user) console.log(req.user)
+  else console.log('not logged in')
+  res.send(JSON.stringify(req.user))
+})
 app.get('/users', async (req, res) => {
-  const Users = await User.find().select('name role')
+  const token = req.header('Authorization').replace('Bearer ', '')
+  jwt.verify(token, 'innovation lab')
+  const Users = await User.find().select('name email role')
   res.send(JSON.stringify(Users.map(user => ({
     id: user._id,
     name: user.name,
@@ -79,6 +93,7 @@ app.use((err, req, res, next) => {
   res.render('error')
 })
 
+// passport local strategy
 passport.use(new LocalStrategy({
   usernameField: 'email',
   passwordField: 'password'
@@ -96,12 +111,21 @@ async (email, password, done) => {
   })
 }
 ))
-passport.serializeUser(function (user, done) {
-  done(null, user)
-})
+// passport.serializeUser(function (user, done) {
+//   done(null, user)
+// })
+// passport.deserializeUser(function (user, done) {
+//   done(null, User.findOne({ _id: user._id }))
+// })
 
-passport.deserializeUser(function (user, done) {
-  done(null, User.findOne({ _id: user._id }))
-})
+passport.use('token', new JwtStrategy({
+  jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+  secretOrKey: 'innovation lab'
+},
+(jwtPayload, done) => {
+  User.findById(jwtPayload._id)
+    .then(user => done(null, user))
+    .catch(err => done(err))
+}))
 
 module.exports = app
