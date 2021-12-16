@@ -70,15 +70,15 @@ const register = async (req, res) => {
 }
 
 app.use('/', indexRouter)
-app.post('/api/login',
+app.post('/login',
   passport.authenticate('local', { session: false }), signin)
-app.post('/api/register', register)
-app.get('/api/me', async (req, res) => {
+app.post('/register', register)
+app.get('/me', async (req, res) => {
   if (req.user) console.log(req.user)
   else console.log('not logged in')
   res.send(JSON.stringify(req.user))
 })
-app.get('/api/users', async (req, res) => {
+app.get('/users', async (req, res) => {
   const token = req.header('Authorization').replace('Bearer ', '')
   jwt.verify(token, 'innovation lab')
   const Users = await User.find().select('name email role')
