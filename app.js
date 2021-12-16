@@ -54,15 +54,31 @@ const signin = (req, res) => {
 // next()
 }
 
+const register = async (req, res) => {
+  User.findOne({ email: req.body.email }, (err, user) => {
+    if (err) res.status('401').send('unknown error')
+    else if (user) res.status('401').send('email already exist')
+    else {
+      User.create({ name: req.body.name, email: req.body.email, password: req.body.password }, (err, user) => {
+        if (err) res.status('401').send('unknown error')
+        const token = jwt.sign({ _id: user._id }, 'innovation lab')
+        res.json(token)
+      })
+    }
+  })
+// next()
+}
+
 app.use('/', indexRouter)
-app.post('/login',
+app.post('/api/login',
   passport.authenticate('local', { session: false }), signin)
-app.get('/me', async (req, res) => {
+app.post('/api/register', register)
+app.get('/api/me', async (req, res) => {
   if (req.user) console.log(req.user)
   else console.log('not logged in')
   res.send(JSON.stringify(req.user))
 })
-app.get('/users', async (req, res) => {
+app.get('/api/users', async (req, res) => {
   const token = req.header('Authorization').replace('Bearer ', '')
   jwt.verify(token, 'innovation lab')
   const Users = await User.find().select('name email role')
@@ -101,6 +117,7 @@ passport.use(new LocalStrategy({
 },
 async (email, password, done) => {
   User.findOne({ email }, async (err, user) => {
+    console.log(user)
     if (err) { return done(err) }
     if (!user) { return done(null, false) }
     const verified = await user.verify(password)

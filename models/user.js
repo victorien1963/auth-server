@@ -22,6 +22,15 @@ const userSchema = new mongoose.Schema({
 }
 )
 
+userSchema.pre('save', function (next) {
+  if (!this.isModified('password')) return next()
+  pw.hash(this.password, (err, hash) => {
+    if (err) return next(err)
+    this.password = hash
+    return next()
+  })
+})
+
 userSchema.methods.verify = function (password) {
   return pw.verify(this.password, password)
 }
