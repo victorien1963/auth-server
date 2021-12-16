@@ -22,9 +22,8 @@ const userSchema = new mongoose.Schema({
 }
 )
 
-userSchema.methods.verify = async (hash, password) => {
-  console.log(hash)
-  return pw.verify(hash, password)
+userSchema.methods.verify = function (password) {
+  return pw.verify(this.password, password)
 }
 
 module.exports = mongoose.model('User', userSchema)
