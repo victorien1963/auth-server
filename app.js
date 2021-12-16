@@ -1,3 +1,4 @@
+require('dotenv').config()
 const createError = require('http-errors')
 const express = require('express')
 const path = require('path')
@@ -14,7 +15,7 @@ const mongoose = require('mongoose')
 main().catch(err => console.log(err))
 async function main () {
   console.log('start connect')
-  await mongoose.connect(process.env.DB_CONNECTTION || 'mongodb://127.0.0.1:27017/luca')
+  await mongoose.connect(process.env.DB_CONNECTION || 'mongodb://127.0.0.1:27017/luca')
   console.log('connect sucess')
 }
 const User = require('./models/user.js')
