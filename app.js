@@ -15,7 +15,7 @@ const mongoose = require('mongoose')
 main().catch(err => console.log(err))
 async function main () {
   console.log('start connect')
-  await mongoose.connect(process.env.DB_CONNECTION || 'mongodb://127.0.0.1:27017/luca')
+  await mongoose.connect(process.env.DB_CONNECTION || 'mongodb://127.0.0.1:27017/nauitlus')
   console.log('connect sucess')
 }
 const User = require('./models/user.js')
