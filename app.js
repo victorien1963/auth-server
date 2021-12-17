@@ -51,12 +51,28 @@ const signin = (req, res) => {
   console.log(`${req.user.name} has logged in`)
   const token = jwt.sign({ _id: req.user._id }, 'innovation lab')
   res.json(token)
+// next()
+}
+
+const register = async (req, res) => {
+  User.findOne({ email: req.body.email }, (err, user) => {
+    if (err) res.status('401').send('unknown error')
+    else if (user) res.status('401').send('email already exist')
+    else {
+      User.create({ name: req.body.name, email: req.body.email, password: req.body.password }, (err, user) => {
+        if (err) res.status('401').send('unknown error')
+        const token = jwt.sign({ _id: user._id }, 'innovation lab')
+        res.json(token)
+      })
+    }
+  })
+// next()
 }
 
 app.use('/', indexRouter)
 app.post('/login',
-  passport.authenticate('local', { session: false }),
-  signin)
+  passport.authenticate('local', { session: false }), signin)
+app.post('/register', register)
 app.get('/me', async (req, res) => {
   if (req.user) console.log(req.user)
   else console.log('not logged in')
@@ -100,15 +116,13 @@ passport.use(new LocalStrategy({
   passwordField: 'password'
 },
 async (email, password, done) => {
-  User.findOne({ email }, (err, user) => {
+  User.findOne({ email }, async (err, user) => {
+    console.log(user)
     if (err) { return done(err) }
-    if (!user) {
-      return done(null, false, { message: 'Incorrect username.' })
-    }
-    if (!user.verify(user.password, password)) {
-      return done(null, false, { message: 'Incorrect password.' })
-    }
-    return done(null, { _id: user.id, email: user.email, name: user.name })
+    if (!user) { return done(null, false) }
+    const verified = await user.verify(password)
+    if (!verified) { return done(null, false) }
+    return done(null, user)
   })
 }
 ))
